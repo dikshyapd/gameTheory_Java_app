@@ -1,18 +1,29 @@
-## Getting Started
+Aggression – Game Theory Research Project
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+Aggression is a turn-based strategy game developed in Java for a research project on game theory. The game simulates competitive behavior and explores how different strategies perform under varying conditions.
 
-## Folder Structure
+File Location
 
-The workspace contains two folders by default, where:
+Source code is located at:
+NewProjectJava/src/TempGamePlay.java
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+How to Run
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+Navigate to the project directory.
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
+Compile the game:
 
-## Dependency Management
+javac NewProjectJava/src/TempGamePlay.java
 
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+
+Run the game:
+
+java -cp NewProjectJava/src TempGamePlay
+
+Requirements
+
+Java 8 or higher
+
+Description
+
+The game models strategic interactions, with a focus on aggressive vs. passive decision-making. Designed for experimental and educational use in game theory contexts.
