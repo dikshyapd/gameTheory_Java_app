@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  
+  <title>Agression Game Helper</title>
+  <style>
+    html,body { height:100%; width:100%; margin:0; font-family: Arial, Helvetica, sans-serif; background:#f5f7fb; }
+    .container { max-width:1000px; margin:24px auto; padding:16px; }
+    .card { background:white; border-radius:8px; padding:16px; box-shadow:0 4px 14px rgba(0,0,0,0.06); margin-bottom:16px; }
+    h1.title { margin:0 0 12px 0; font-size:22px; }
+    .description { color:#444; margin-bottom:12px; }
+    .grid { display:grid; gap:12px; }
+    .grid-cols-2 { grid-template-columns:1fr 1fr; }
+    .form-group label { display:block; font-weight:600; margin-bottom:6px; }
+    input[type="number"], input[type="text"]{ width:100%; padding:8px; border-radius:6px; border:1px solid #ddd; }
+    button { cursor:pointer; border:none; border-radius:8px; padding:10px 16px; background:#0b79ff; color:white; font-weight:600; }
+    button.secondary { background:#e0e6ef; color:#111; }
+    .hidden { display:none !important; }
+    .board-container { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
+    .game-cell { width:64px; height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; border:1px solid #d6dbe7; background:#fff; cursor:pointer; position:relative; }
+    .cell-label { font-size:12px; color:#666; text-align:center; width:64px; }
+    .player1 { background:#cfe9ff; border:1px solid #7fbfff; }
+    .player2 { background:#ffd5d5; border:1px solid #ff8f8f; }
+    .neutral { background:#f6f6f6; border:1px dashed #ccc; color:#333; }
+    .stat-row { display:flex; justify-content:space-between; margin-top:6px; }
+    .status-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .toast { position:fixed; top:20px; right:20px; background:#333; color:white; padding:12px 18px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.18); z-index:9999; }
+    .toast.error{ background:#e63946; }
+    .toast.success{ background:#2a9d8f; }
+    .safety { margin-top:8px; font-size:13px; color:#333; }
+    .controls { display:flex; gap:8px; align-items:center; }
+    .active { box-shadow: 0 0 0 3px rgba(11,121,255,0.12); }
+    .small-btn { padding:8px 12px; border-radius:6px; background:#0b79ff; color:white; border:none; cursor:pointer; }
+    .muted { color:#666; font-size:13px; }
+    .attack-phase-banner { background:#fff6d8; border:1px solid #ffecb2; padding:12px; border-radius:8px; margin-bottom:12px; }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    .attackable {
+      border: 3px solid #00c853 !important; /* thick green border */
+      box-shadow: 0 0 10px rgba(0, 200, 83, 0.6);
+    }
+
+
+    #setupScreen h2 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    #startBtn {
+      background: #0b79ff;
+      color: white;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+    }
+
+    #startBtn:hover {
+      background: #065fcc;
+    }
+
+    
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="card">
+      <h1 class="title">Agression Game Helper</h1>
+      <div class="description">
+        This helps you place troops strategically on a linear board. The UI guides placement and runs the attack phase based on adjacency rules.
+      </div>
+    </div>
+
+    <div id="setupScreen" class="card">
+      <h2 style="margin-bottom:16px; text-align:center;">Game Setup</h2>
+
+      <div style="display:flex; flex-wrap:wrap; gap:24px; justify-content:center;">
+        <!-- Left Column -->
+        <div style="flex:1 1 200px; min-width:200px; max-width:300px;">
+          <div class="form-group">
+            <label for="boardSize">Board Size (cells)</label>
+            <input id="boardSize" type="number" min="5" max="20" value="10">
+          </div>
+          <div class="form-group">
+            <label for="startingArmies">Starting Armies per Player</label>
+            <input id="startingArmies" type="number" min="1" max="500" value="10">
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div style="flex:1 1 200px; min-width:200px; max-width:300px;">
+          <div class="form-group">
+            <label>Player Names</label>
+            <input id="player1Name" type="text" placeholder="Player 1" value="Player 1" style="margin-bottom:8px;">
+            <input id="player2Name" type="text" placeholder="Player 2" value="Player 2">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px; text-align:center;">
+        <button id="startBtn" style="padding:12px 24px; font-size:16px;">▶ Start New Game</button>
+      </div>
+    </div>
+
+
+    <!-- Placement / Game -->
+    <div id="gameScreen" class="hidden card">
+      <div id="placementBanner" class="">
+        <div class="status-bar">
+          <div>
+            <strong>Phase:</strong> <span id="phaseLabel">Placement</span>
+            <div class="muted" id="instructionText">Place armies on empty cells. Safety hints shown when selecting a number of troops.</div>
+          </div>
+          <div class="controls">
+            <div class="muted">Current: <strong id="currentPlayerLabel">Player 1</strong></div>
+            <div class="muted">Remaining: <strong id="remainingArmiesLabel">10</strong></div>
+            <button class="small-btn secondary" id="resetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="playersCard" style="margin-top:12px;">
+        <div class="grid grid-cols-2">
+          <div id="player1Card">
+            <h4 id="player1NameDisplay">Player 1</h4>
+            <div class="stat-row"><span>Total Armies:</span><span id="player1Total">10</span></div>
+            <div class="stat-row"><span>Remaining:</span><span id="player1Remaining">10</span></div>
+            <div class="stat-row"><span>Territories:</span><span id="player1Terr">0</span></div>
+          </div>
+          <div id="player2Card">
+            <h4 id="player2NameDisplay">Player 2</h4>
+            <div class="stat-row"><span>Total Armies:</span><span id="player2Total">10</span></div>
+            <div class="stat-row"><span>Remaining:</span><span id="player2Remaining">10</span></div>
+            <div class="stat-row"><span>Territories:</span><span id="player2Terr">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="safetyBoard" class="card" style="margin-top:12px; font-size:13px; line-height:1.4;"></div>
+
+
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex; gap:12px; align-items:center;">
+          <label for="placeCount">Troops to place now:</label>
+          <input id="placeCount" type="number" min="1" value="1" style="width:80px;">
+          <button id="showSafety" class="small-btn">Show Safety Board</button>
+          <!-- <button id="startAttackBtn" class="small-btn" style="background:#ff8f00;color:white;">Start Attack Phase</button> -->
+        </div>
+
+        <div style="margin-top:12px;">
+          <div id="cellLabels" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+          <div id="gameBoard" class="board-container"></div>
+        </div>
+      </div>
+
+      <div id="attackPanel" class="card hidden" style="margin-top:12px;">
+        <div class="attack-phase-banner">
+          <strong>Attack Phase</strong> — players take turns attacking adjacent enemy cells. If combined adjacent troops beat defender troops, capture occurs.
+        </div>
+
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
+          <div class="muted">Attacker: <strong id="attackCurrent">Player 1</strong></div>
+          <div class="muted">Other: <strong id="attackOther">Player 2</strong></div>
+          <button id="endAttackRound" class="small-btn secondary">End Attack Round</button>
+        </div>
+
+        <div id="attackInfo" class="muted">Click an enemy cell to attempt an attack (must be adjacent to at least one friendly cell).</div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    
+    // ---- Game state (port of your Java) ----
+    class Slot {
+      constructor(player, troops) { this.player = player; this.troops = troops; }
+      toString() { return `[P${this.player}:${this.troops}]`; }
+    }
+    let attackHasBegun = false;
+
+    let boardSize = 10;
+    let firstToFinish = 0;
+    let attackRound = 0;
+    let mainBoard = [];
+    let chancesP1 = [];
+    let chancesP2 = [];
+    let p1Finished = false;
+    let p2Finished = false;
+    let currentPlayer = 1;
+    let gameFinished = false;
+    let p1Troops = 10;
+    let p2Troops = 10;
+    let phase = 'placement'; // 'placement' or 'attack'
+
+    // DOM refs
+    const setupScreen = document.getElementById('setupScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const boardEl = document.getElementById('gameBoard');
+    const cellLabelsEl = document.getElementById('cellLabels');
+    const placeCountEl = document.getElementById('placeCount');
+    const showSafetyBtn = document.getElementById('showSafety');
+    const startAttackBtn = document.getElementById('startAttackBtn');
+    const attackPanel = document.getElementById('attackPanel');
+    const currentPlayerLabel = document.getElementById('currentPlayerLabel');
+    const remainingArmiesLabel = document.getElementById('remainingArmiesLabel');
+    const phaseLabel = document.getElementById('phaseLabel');
+    const instructionText = document.getElementById('instructionText');
+
+    // player displays
+    const player1NameDisplay = document.getElementById('player1NameDisplay');
+    const player2NameDisplay = document.getElementById('player2NameDisplay');
+    const player1Total = document.getElementById('player1Total');
+    const player2Total = document.getElementById('player2Total');
+    const player1Remaining = document.getElementById('player1Remaining');
+    const player2Remaining = document.getElementById('player2Remaining');
+    const player1Terr = document.getElementById('player1Terr');
+    const player2Terr = document.getElementById('player2Terr');
+
+    const attackCurrent = document.getElementById('attackCurrent');
+    const attackOther = document.getElementById('attackOther');
+
+    // Toast helper
+    function showToast(title, desc='', type='success') {
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type === 'error' ? 'error':'');
+      t.innerHTML = `<strong>${title}</strong><div style="font-size:13px;margin-top:4px;">${desc}</div>`;
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 3500);
+    }
+
+    // Setup / initialize board
+    function setBoardSize(n) {
+      mainBoard = new Array(n).fill(null);
+      chancesP1 = new Array(n).fill(50);
+      chancesP2 = new Array(n).fill(50);
+      boardSize = n;
+    }
+
+    function createInitialGameState(bs, startingArmies, p1Name, p2Name) {
+      setBoardSize(bs);
+      p1Troops = startingArmies;
+      p2Troops = startingArmies;
+      player1NameDisplay.textContent = p1Name;
+      player2NameDisplay.textContent = p2Name;
+      player1Total.textContent = startingArmies;
+      player2Total.textContent = startingArmies;
+      player1Remaining.textContent = startingArmies;
+      player2Remaining.textContent = startingArmies;
+      currentPlayer = 1;
+      p1Finished = false; p2Finished = false;
+      phase = 'placement';
+      firstToFinish = 0;
+      attackRound = 0;
+      gameFinished = false;
+    }
+
+    function renderBoard() {
+      cellLabelsEl.innerHTML = '';
+      boardEl.innerHTML = '';
+
+      for (let i = 0; i < boardSize; i++) {
+        const lbl = document.createElement('div');
+        lbl.className = 'cell-label';
+        lbl.textContent = `Cell ${i}`;
+        cellLabelsEl.appendChild(lbl);
+
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'game-cell';
+        const cell = mainBoard[i];
+
+        if (!cell) {
+          cellDiv.innerHTML = '<div style="font-size:12px;color:#9ca3af;">Empty</div>';
+        } else {
+          if (cell.player === 1) cellDiv.classList.add('player1');
+          else if (cell.player === 2) cellDiv.classList.add('player2');
+          else if (cell.player === 0) cellDiv.classList.add('neutral');
+
+          const ownerLabel =
+            cell.player === 1 ? 'P1' :
+            cell.player === 2 ? 'P2' : 'Neutral';
+
+          cellDiv.innerHTML = `
+            <div style="font-weight:700;">${cell.troops}</div>
+            <div style="font-size:12px;">${ownerLabel}</div>
+          `;
+        }
+
+        // ✅ Attack-phase highlighting logic (only highlight if attack would succeed)
+        if (phase === 'attack' && cell && cell.player !== currentPlayer && cell.player !== 0) {
+          let combinedAdjacent = 0;
+
+          // Left and right friendly neighbors
+          if (i > 0 && mainBoard[i - 1] && mainBoard[i - 1].player === currentPlayer) {
+            combinedAdjacent += mainBoard[i - 1].troops;
+          }
+          if (i < boardSize - 1 && mainBoard[i + 1] && mainBoard[i + 1].player === currentPlayer) {
+            combinedAdjacent += mainBoard[i + 1].troops;
+          }
+
+          // ✅ Only highlight if attack success is possible
+          if (combinedAdjacent > cell.troops) {
+            cellDiv.classList.add('attackable');
+          }
+        }
+
+        // Click logic
+        cellDiv.onclick = () => {
+          if (phase === 'placement') handlePlacementClick(i);
+          else handleAttackClick(i);
+        };
+
+        boardEl.appendChild(cellDiv);
+      }
+
+      updatePlayerCards();
+      checkForGameEnd();
+
+    }
+
+
+    function checkForGameEnd() {
+      // Only check for end during attack phase and after at least one attack occurred
+      if (phase !== 'attack' || !attackHasBegun) return;
+
+      let validAttacksExist = false;
+
+      for (let i = 0; i < boardSize; i++) {
+        const cell = mainBoard[i];
+        if (!cell || cell.player === 0) continue;
+
+        const player = cell.player;
+        const enemy = player === 1 ? 2 : 1;
+        let combinedAdjacent = 0;
+
+        if (i > 0 && mainBoard[i - 1] && mainBoard[i - 1].player === player)
+          combinedAdjacent += mainBoard[i - 1].troops;
+        if (i < boardSize - 1 && mainBoard[i + 1] && mainBoard[i + 1].player === player)
+          combinedAdjacent += mainBoard[i + 1].troops;
+
+        if (i > 0 && mainBoard[i - 1] && mainBoard[i - 1].player === enemy && combinedAdjacent > mainBoard[i - 1].troops)
+          validAttacksExist = true;
+        if (i < boardSize - 1 && mainBoard[i + 1] && mainBoard[i + 1].player === enemy && combinedAdjacent > mainBoard[i + 1].troops)
+          validAttacksExist = true;
+      }
+
+      // ✅ Only end game if an attack has started and no further valid ones exist
+      if (attackHasBegun && !validAttacksExist) {
+        endGame();
+      }
+    }
+
+
+
+    function endGame() {
+      phase = 'ended';
+      safetyBoardEl.innerHTML = `
+        <div style="
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          background:#111;
+          color:white;
+          padding:40px;
+          border-radius:16px;
+          box-shadow:0 0 15px rgba(255,255,255,0.2);
+          text-align:center;
+          font-size:1.2rem;
+        ">
+          <p style="margin-bottom:20px;">🎉 The game has ended! No more possible attacks.</p>
+          <button id="resetGameBtn" style="
+            background:#22c55e;
+            color:white;
+            padding:10px 20px;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;
+            font-size:1rem;
+          ">Reset Game</button>
+        </div>
+      `;
+
+      document.getElementById('resetGameBtn').onclick = resetGame;
+    }
+
+
+    function updatePlayerCards(){
+      currentPlayerLabel.textContent = (currentPlayer===1)? player1NameDisplay.textContent : player2NameDisplay.textContent;
+      const remaining = currentPlayer===1? p1Troops : p2Troops;
+      remainingArmiesLabel.textContent = remaining;
+      player1Remaining.textContent = p1Troops;
+      player2Remaining.textContent = p2Troops;
+      player1Terr.textContent = countTerritories(1);
+      player2Terr.textContent = countTerritories(2);
+
+      // attack panel labels
+      attackCurrent.textContent = currentPlayer===1? player1NameDisplay.textContent : player2NameDisplay.textContent;
+      attackOther.textContent = currentPlayer===1? player2NameDisplay.textContent : player1NameDisplay.textContent;
+    }
+
+    // Placement logic
+    function canPlaceAt(pos, amount) {
+      const cell = mainBoard[pos];
+      const currentPlayerTroops = currentPlayer===1? p1Troops : p2Troops;
+      if (cell && cell.player !== currentPlayer) return {can:false, reason: "Controlled by opponent"};
+      if (amount <= 0) return {can:false, reason: "Enter a positive number"};
+      if (amount > currentPlayerTroops) return {can:false, reason: "Not enough armies"};
+      return {can:true};
+    }
+
+    function handlePlacementClick(pos) {
+      if (phase !== 'placement') return;
+
+      const amount = parseInt(placeCountEl.value, 10) || 1;
+
+      // Can only place on empty cells
+      if (mainBoard[pos]) {
+        showToast('Cannot place', 'Cell already occupied', 'error');
+        return;
+      }
+
+      const currentRemaining = currentPlayer === 1 ? p1Troops : p2Troops;
+      if (amount > currentRemaining) {
+        showToast('Cannot place', 'Not enough armies', 'error');
+        return;
+      }
+
+      if (!confirm(`Place ${amount} at cell ${pos}?`)) return;
+
+      // Place armies (new Slot only)
+      mainBoard[pos] = new Slot(currentPlayer, amount);
+
+      // Subtract from current player
+      if (currentPlayer === 1) p1Troops -= amount;
+      else p2Troops -= amount;
+
+      // Check if current player ran out
+      const updatedRemaining = currentPlayer === 1 ? p1Troops : p2Troops;
+      if (updatedRemaining === 0) {
+        if (currentPlayer === 1) {
+          p1Finished = true;
+          if (firstToFinish === 0) firstToFinish = 1;
+        } else {
+          p2Finished = true;
+          if (firstToFinish === 0) firstToFinish = 2;
+        }
+
+        const otherPlayer = currentPlayer === 1 ? 2 : 1;
+        const otherRemaining = otherPlayer === 1 ? p1Troops : p2Troops;
+
+        // ✅ If the other player still has armies, let them keep placing until they’re done or board fills
+        if (otherRemaining > 0 && !mainBoardFull()) {
+          currentPlayer = otherPlayer;
+          showToast(`${currentPlayer===1?player1NameDisplay.textContent:player2NameDisplay.textContent} continues placing until armies are exhausted or board fills.`);
+        } else {
+          // ✅ Otherwise, go to attack phase
+          startAttackPhase();
+          renderBoard();
+          return;
+        }
+      } else {
+        // ✅ Only switch turns if the *other* player still has armies
+        const otherPlayer = currentPlayer === 1 ? 2 : 1;
+        const otherRemaining = otherPlayer === 1 ? p1Troops : p2Troops;
+
+        if (otherRemaining === 0) {
+          // Other player has none left, keep current player placing
+          showToast(`${currentPlayer===1?player1NameDisplay.textContent:player2NameDisplay.textContent} keeps placing troops until finished or board fills.`);
+        } else {
+          switchPlayer();
+        }
+      }
+
+
+      // Refresh UI
+      renderBoard();
+
+      // Refresh safety board for next placement
+      const troopsToPlace = parseInt(placeCountEl.value, 10) || 1;
+      renderSafetyBoard(troopsToPlace);
+    }
+
+
+    // New helper to start attack phase
+    function startAttackPhase() {
+      phase = 'attack';
+      phaseLabel.textContent = 'Attack';
+      instructionText.textContent = 'Attack phase: click an enemy cell to attack (must be adjacent to friendly cell).';
+      attackPanel.classList.remove('hidden');
+      if (firstToFinish !== 0) currentPlayer = firstToFinish;
+      else currentPlayer = 1;
+      updatePlayerCards();
+      showToast('Attack phase started', 'Automatic transition after placement', 'success');
+    }
+
+
+
+    // compute safety ported from Java
+    function computeSafetyForSlot(pos, troopsToPlace) {
+      // look left
+      let leftTroops=-1, leftPlayer=0;
+      if (pos>0 && mainBoard[pos-1]) { leftTroops = mainBoard[pos-1].troops; leftPlayer = mainBoard[pos-1].player; }
+      let rightTroops=-1, rightPlayer=0;
+      if (pos < mainBoard.length-1 && mainBoard[pos+1]) { rightTroops = mainBoard[pos+1].troops; rightPlayer = mainBoard[pos+1].player; }
+
+      const leftIsEnemy = (leftPlayer !== 0 && leftPlayer !== currentPlayer);
+      const rightIsEnemy = (rightPlayer !== 0 && rightPlayer !== currentPlayer);
+      const enemyTroopsTotal = (currentPlayer === 1) ? p2Troops : p1Troops;
+
+      if (leftIsEnemy && leftTroops > troopsToPlace) return 10;
+      if (rightIsEnemy && rightTroops > troopsToPlace) return 10;
+
+      let enemyCanCombineAttack = false;
+      if (leftIsEnemy) {
+        const helper = (pos-2 >=0 && mainBoard[pos-2] && mainBoard[pos-2].player === leftPlayer) ? mainBoard[pos-2].troops : 0;
+        if (leftTroops + helper > troopsToPlace) enemyCanCombineAttack = true;
+      }
+      if (rightIsEnemy) {
+        const helper = (pos+2 < boardSize && mainBoard[pos+2] && mainBoard[pos+2].player === rightPlayer) ? mainBoard[pos+2].troops : 0;
+        if (rightTroops + helper > troopsToPlace) enemyCanCombineAttack = true;
+      }
+      if (enemyCanCombineAttack) return 30;
+      if (enemyTroopsTotal === 0 && !leftIsEnemy && !rightIsEnemy) return 100;
+      return 70;
+    }
+
+    function renderSafetyBoard(troopsToPlace) {
+      const safetyDiv = document.getElementById('safetyBoard');
+      let html = '';
+      for (let i=0;i<boardSize;i++){
+        if (mainBoard[i]) html += `Cell ${i}: FILLED<br>`;
+        else {
+          const chance = computeSafetyForSlot(i, troopsToPlace);
+          let status;
+          if (chance < 40) status = 'NOT SAFE';
+          else if (chance <= 60) status = 'Needs Defense';
+          else status = 'Safe';
+          const note = getAttackOpportunityNote(i, troopsToPlace);
+          html += `Cell ${i}: ${chance}% - ${status}${note}<br>`;
+        }
+      }
+      safetyDiv.innerHTML = html;
+    }
+
+
+    function getAttackOpportunityNote(pos, troopsToPlace) {
+      let sb = [];
+      if (pos > 0 && mainBoard[pos-1]) {
+        const left = mainBoard[pos-1];
+        if (left.player !== currentPlayer && troopsToPlace > left.troops) sb.push(`Can attack at ${pos-1}`);
+      }
+      if (pos < boardSize-1 && mainBoard[pos+1]) {
+        const right = mainBoard[pos+1];
+        if (right.player !== currentPlayer && troopsToPlace > right.troops) sb.push(`Can attack at ${pos+1}`);
+      }
+      return sb.length ? ' - ' + sb.join(' & ') : '';
+    }
+
+    // placement helpers
+    function mainBoardFull() {
+      return mainBoard.every(s => s !== null);
+    }
+    function countTerritories(player) {
+      return mainBoard.filter(s => s && s.player === player).length;
+    }
+    function countTroops(player) {
+      return mainBoard.filter(s => s && s.player === player).reduce((acc, s) => acc + s.troops, 0);
+    }
+    function switchPlayer() { currentPlayer = (currentPlayer===1)?2:1; }
+
+    // Attack phase logic (ported from Java)
+    // ---- Attack helpers ----
+    function playerCanAttack(player) {
+      for (let i = 0; i < boardSize; i++) {
+        const slot = mainBoard[i];
+        if (!slot || slot.player === player) continue;
+        const leftAdj = i > 0 && mainBoard[i - 1] && mainBoard[i - 1].player === player;
+        const rightAdj = i < boardSize - 1 && mainBoard[i + 1] && mainBoard[i + 1].player === player;
+        if (leftAdj || rightAdj) return true;
+      }
+      return false;
+    }
+
+    function attackCell(pos) {
+      const target = mainBoard[pos];
+      if (!target || target.player === currentPlayer) return false;
+
+      let attackTroops = 0;
+      if (pos > 0 && mainBoard[pos - 1] && mainBoard[pos - 1].player === currentPlayer) attackTroops += mainBoard[pos - 1].troops;
+      if (pos < boardSize - 1 && mainBoard[pos + 1] && mainBoard[pos + 1].player === currentPlayer) attackTroops += mainBoard[pos + 1].troops;
+
+      if (attackTroops === 0) return false; // cannot attack
+
+      if (attackTroops > target.troops) {
+        target.player = 0; // neutralize
+        showToast('Attack success', `Cell ${pos} cleared`, 'success');
+      } else {
+        showToast('Attack failed', `Attackers (${attackTroops}) <= Defender (${target.troops})`, 'error');
+      }
+      renderBoard();
+      return true;
+    }
+
+    // ---- Main attack click handler ----
+    function handleAttackClick(pos) {
+      if (phase !== 'attack') return;
+
+      attackHasBegun = true; // ✅ mark that attacking has started
+
+      const cell = mainBoard[pos];
+      if (!cell || cell.player === currentPlayer || cell.player === 0) {
+        showToast('Invalid target', 'You can only attack enemy territories.', 'error');
+        return;
+      }
+
+      let combinedAdjacent = 0;
+      if (pos > 0 && mainBoard[pos - 1] && mainBoard[pos - 1].player === currentPlayer)
+        combinedAdjacent += mainBoard[pos - 1].troops;
+      if (pos < boardSize - 1 && mainBoard[pos + 1] && mainBoard[pos + 1].player === currentPlayer)
+        combinedAdjacent += mainBoard[pos + 1].troops;
+
+      if (combinedAdjacent > cell.troops) {
+        mainBoard[pos].player = 0; // neutralize territory
+        showToast('Attack successful! Territory cleared.', 'success');
+      } else {
+        showToast('Attack failed.', 'error');
+      }
+
+      renderBoard();
+      checkForGameEnd();
+    }
+
+
+    // ---- Switch to next valid player turn or end game ----
+    function nextPlayerTurn() {
+      if (gameFinished) return;
+
+      const otherPlayer = currentPlayer === 1 ? 2 : 1;
+
+      const p1Can = playerCanAttack(1);
+      const p2Can = playerCanAttack(2);
+
+      if (!p1Can && !p2Can) {
+        endGame();
+        return;
+      }
+
+      // switch to other player if they can attack
+      if (playerCanAttack(otherPlayer)) currentPlayer = otherPlayer;
+      else currentPlayer = currentPlayer; // stay on current player if other cannot attack
+
+      attackRound++;
+      updatePlayerCards();
+      checkForGameEnd();
+    }
+
+    // ---- End game logic ----
+    function endGame() {
+      const p1Terr = countTerritories(1);
+      const p2Terr = countTerritories(2);
+      const p1TroopsCount = countTroops(1);
+      const p2TroopsCount = countTroops(2);
+
+      let winnerText = '';
+      if (p1Terr > p2Terr) winnerText = player1NameDisplay.textContent;
+      else if (p2Terr > p1Terr) winnerText = player2NameDisplay.textContent;
+      else if (p1TroopsCount > p2TroopsCount) winnerText = player1NameDisplay.textContent;
+      else if (p2TroopsCount > p1TroopsCount) winnerText = player2NameDisplay.textContent;
+      else winnerText = 'Tie';
+
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.background = 'rgba(0,0,0,0.5)';
+      overlay.style.display = 'flex';
+      overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center';
+      overlay.style.zIndex = '10000';
+
+      const modal = document.createElement('div');
+      modal.style.background = '#2a9d8f';
+      modal.style.color = 'white';
+      modal.style.padding = '40px';
+      modal.style.borderRadius = '16px';
+      modal.style.textAlign = 'center';
+      modal.style.width = '50%';
+      modal.innerHTML = `
+        <h1>Game Over</h1>
+        <p style="margin-top:12px; font-size:18px;">Winner: ${winnerText}</p>
+        <button id="resetGameBtn" style="margin-top:20px; padding:12px 24px; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Reset Game</button>
+      `;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      document.getElementById('resetGameBtn').onclick = () => location.reload();
+
+      gameFinished = true;
+      phase = 'finished';
+      phaseLabel.textContent = 'Finished';
+      instructionText.textContent = `Game over — Winner: ${winnerText}`;
+    }
+
+    function checkPlacementEnd() {
+      if ((p1Finished && p2Finished) || mainBoardFull()) {
+        phase = 'attack';
+        phaseLabel.textContent = 'Attack';
+        instructionText.textContent = 'Attack phase: click an enemy cell to attack (must be adjacent to friendly cell).';
+        attackPanel.classList.remove('hidden');
+        if (firstToFinish !== 0) currentPlayer = firstToFinish;
+        else currentPlayer = 1;
+        updatePlayerCards();
+        showToast('Attack phase', 'Automatic attack phase started.', 'success');
+
+        // optionally hide safety board during attack
+        // document.getElementById('safetyBoard').style.display = 'none';
+      }
+    }
+
+
+
+    function determineWinner() {
+      const p1Terr = countTerritories(1);
+      const p2Terr = countTerritories(2);
+      const p1T = countTroops(1);
+      const p2T = countTroops(2);
+      let winner = 0;
+      if (p1Terr > p2Terr) winner = 1;
+      else if (p2Terr > p1Terr) winner = 2;
+      else {
+        if (p1T > p2T) winner = 1;
+        else if (p2T > p1T) winner = 2;
+        else winner = firstToFinish || 1;
+      }
+      showToast('Game Over', `Player ${winner} wins!`, 'success');
+      phase = 'finished';
+      phaseLabel.textContent = 'Finished';
+      instructionText.textContent = `Game over — Player ${winner} wins`;
+    }
+
+    // event handlers
+    startBtn.onclick = () => {
+      const bs = parseInt(document.getElementById('boardSize').value, 10) || 10;
+      const sa = parseInt(document.getElementById('startingArmies').value, 10) || 10;
+      const p1 = document.getElementById('player1Name').value || 'Player 1';
+      const p2 = document.getElementById('player2Name').value || 'Player 2';
+      if (bs < 3 || bs > 20) { showToast('Invalid board size', 'Choose between 3 and 20', 'error'); return; }
+      if (sa < 1 || sa > 500) { showToast('Invalid armies', 'Choose between 1 and 500', 'error'); return; }
+      createInitialGameState(bs, sa, p1, p2);
+      setupScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      phaseLabel.textContent = 'Placement';
+      instructionText.textContent = 'Place armies on empty cells. Use "Show Safety Board" for advice.';
+      renderBoard();
+    };
+
+    resetBtn.onclick = () => {
+      if (!confirm('Reset the game and return to setup?')) return;
+      location.reload();
+    };
+
+    showSafetyBtn.onclick = () => {
+      const troopsToPlace = parseInt(placeCountEl.value,10) || 1;
+      displaySafetyBoard(troopsToPlace);
+    };
+
+    startAttackBtn.onclick = () => {
+      // require at least one placement? We allow start if both players finished placement or board not full.
+      phase = 'attack';
+      phaseLabel.textContent = 'Attack';
+      instructionText.textContent = 'Attack phase: click an enemy cell to attack (must be adjacent to friendly cell).';
+      attackPanel.classList.remove('hidden');
+      renderBoard();
+      // set attacker as firstToFinish if set, else player 1
+      if (firstToFinish !== 0) currentPlayer = firstToFinish;
+      else currentPlayer = 1;
+      updatePlayerCards();
+      showToast('Attack phase', 'You may now attack.', 'success');
+    };
+
+    document.getElementById('endAttackRound').onclick = () => {
+      // manual end of current player's attack attempts -> switch player
+      if (phase !== 'attack') return;
+      switchPlayer();
+      attackRound++;
+      updatePlayerCards();
+      showToast('Turn ended', `Now ${currentPlayer===1? player1NameDisplay.textContent:player2NameDisplay.textContent}'s turn`);
+      // check end conditions
+      const p1Has = (p1Troops>0 || mainBoard.some(cell => cell && cell.player===1));
+      const p2Has = (p2Troops>0 || mainBoard.some(cell => cell && cell.player===2));
+      if (!p1Has || !p2Has || countTerritories(1) > Math.floor(boardSize/2) || countTerritories(2) > Math.floor(boardSize/2)) {
+        determineWinner();
+      }
+    };
+
+    // initial small render
+    renderBoard();
+
+  </script>
+</body>
+</html>

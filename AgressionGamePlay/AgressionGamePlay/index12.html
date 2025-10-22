@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agression Game Helper</title>
+</head>
+
+<body>
+  <div class="head-container">
+    <h1 class="title">Agression Game Helper</h1>
+    <div class="description">
+      This is a program that will help you play the game of agression in a stretegic way. The game will display messages
+      that will help you to make the best decisions and to win the game as you play. The areas in this game are colored
+      in terms of safety, so you can see where you are safe and where you are not. Green is safe, yellow is not safe,
+      and red is very dangerous.
+    </div>
+    <div class="game-container">
+      
+    <div class="game">
+      <!-- react and DOM app -->
+      <div id="root"></div>
+      <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+      <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+      <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    </div>
+
+    <script type="text/babel">
+      function App() {
+        //return <h1> Hello World </h1>;
+      }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    
+    </script>
+    
+<div id="setupScreen">
+
+  <main class="container">
+      <div class="card setup-card">
+          <h2 class="text-center" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 24px;">Play Agression Helper</h2>
+
+          <div class="grid grid-cols-2">
+              <div>
+                  <div class="form-group">
+                      <label for="boardSize">Board Size (Number of Cells)</label>
+                      <input type="number" id="boardSize" min="5" max="20" value="10">
+                  </div>
+
+                  <div class="form-group">
+                      <label for="startingArmies">Starting Armies per Player</label>
+                      <input type="number" id="startingArmies" min="1" max="50" value="10">
+                  </div>
+              </div>
+
+              <div>
+                  <div class="form-group">
+                      <label>Player Names</label>
+                      <input type="text" id="player1Name" placeholder="Player 1" value="Player 1" style="margin-bottom: 8px;">
+                      <input type="text" id="player2Name" placeholder="Player 2" value="Player 2">
+                  </div>
+              </div>
+          </div>
+
+          <div class="text-center">
+              <button onclick="startGame()" style="padding: 12px 32px; font-size: 16px;">
+                  ▶ Start New Game
+              </button>
+          </div>
+      </div>
+
+      <div class="rules-section">
+          <h3>How to Play</h3>
+          <div class="rules-grid">
+              <div>
+                  <h4>Basic Rules:</h4>
+                  <ul>
+                      <li>• Players take turns placing armies on the linear battlefield</li>
+                      <li>• Click on a cell and enter the number of armies to deploy</li>
+                      <li>• You can only place armies in empty cells or cells you control</li>
+                      <li>• Adjacent territories can be attacked during your turn</li>
+                  </ul>
+              </div>
+              <div>
+                  <h4>Victory Conditions:</h4>
+                  <ul>
+                      <li>• Control the majority of territories on the board</li>
+                      <li>• Eliminate your opponent's armies completely</li>
+                      <li>• Strategic positioning is key to victory</li>
+                      <li>• Plan your moves carefully and outmaneuver your opponent</li>
+                  </ul>
+              </div>
+          </div>
+      </div>
+  </main>
+</div>
+
+<!-- Game Screen -->
+<div id="gameScreen" class="hidden">
+  <header>
+      <div class="container">
+          <h1>Game of Aggression</h1>
+          <p>A strategic turn-based game where players compete to control territories on a linear battlefield. Deploy your armies wisely and outmaneuver your opponent to claim victory.</p>
+      </div>
+  </header>
+
+  <main class="container">
+      <!-- Game Status -->
+      <div class="card game-status-card">
+          <div class="game-status">
+              <div class="status-info">
+                  <div class="status-item">
+                      <div class="label">Current Turn</div>
+                      <div class="value" id="currentPlayer">Player 1</div>
+                  </div>
+                  <div class="status-item">
+                      <div class="label">Remaining Armies</div>
+                      <div class="value armies" id="remainingArmies">10</div>
+                  </div>
+              </div>
+
+              <div class="button-group">
+                  <button onclick="resetGame()" class="button-secondary">↻ Reset</button>
+              </div>
+          </div>
+      </div>
+
+      <!-- Game Board -->
+      <div class="battlefield">
+          <h3>Battlefield</h3>
+
+          <div class="cell-labels" id="cellLabels">
+              <!-- Cell labels will be generated here -->
+          </div>
+
+          <div class="board-container" id="gameBoard">
+              <!-- Game cells will be generated here -->
+          </div>
+      </div>
+
+      <!-- Player Cards -->
+      <div class="grid grid-cols-2">
+          <div class="player-card player1" id="player1Card">
+              <h4 id="player1NameDisplay">Player 1</h4>
+              <div class="stat-row">
+                  <span>Total Armies:</span>
+                  <span class="stat-value" id="player1TotalArmies">10</span>
+              </div>
+              <div class="stat-row">
+                  <span>Remaining Armies:</span>
+                  <span class="stat-value" id="player1RemainingArmies">10</span>
+              </div>
+              <div class="stat-row">
+                  <span>Territories Controlled:</span>
+                  <span class="stat-value" id="player1Territories">0</span>
+              </div>
+          </div>
+
+          <div class="player-card player2" id="player2Card">
+              <h4 id="player2NameDisplay">Player 2</h4>
+              <div class="stat-row">
+                  <span>Total Armies:</span>
+                  <span class="stat-value" id="player2TotalArmies">10</span>
+              </div>
+              <div class="stat-row">
+                  <span>Remaining Armies:</span>
+                  <span class="stat-value" id="player2RemainingArmies">10</span>
+              </div>
+              <div class="stat-row">
+                  <span>Territories Controlled:</span>
+                  <span class="stat-value" id="player2Territories">0</span>
+              </div>
+          </div>
+      </div>
+  </main>
+</div>
+
+        <style>
+              .hidden {
+                display: none !important;
+              }
+              .game-cell {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                width: 60px;
+                height: 60px;
+                margin: 4px;
+                border: 1px solid #ccc;
+                background-color: #f9f9f9;
+                position: relative;
+                cursor: pointer;
+                font-family: Arial;
+                font-size: 14px;
+              }
+              .board-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+              }
+              .cell-labels {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+              }
+              .cell-tooltip {
+                position: absolute;
+                top: -20px;
+                background: #333;
+                color: white;
+                padding: 2px 6px;
+                font-size: 12px;
+                border-radius: 4px;
+                display: none;
+              }
+              .game-cell:hover .cell-tooltip {
+                display: block;
+              }
+              .player1 {
+                background-color: #a2d2ff;
+              }
+              .player2 {
+                background-color: #ffadad;
+              }
+              .toast {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #333;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                z-index: 9999;
+                box-shadow: 0 0 10px rgba(0,0,0,0.2);
+                font-size: 14px;
+              }
+              .toast.error {
+                background: #e63946;
+              }
+              .toast.success {
+                background: #2a9d8f;
+              }
+        
+            #setupScreen{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #f0f0f0;
+            }
+            #gameScreen{
+                justify-content: center;
+            }
+        </style>
+
+<script>
+  // Game state
+  let gameState = {
+      boardSize: 10,
+      startingArmies: 10,
+      currentPlayer: 1,
+      player1: {
+          name: "Player 1",
+          armies: 10,
+          totalArmies: 10,
+          territories: 0
+      },
+      player2: {
+          name: "Player 2",
+          armies: 10,
+          totalArmies: 10,
+          territories: 0
+      },
+      board: [],
+      gameStarted: false
+  };
+
+  // Toast notification system
+  function showToast(title, description, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+          <div class="toast-title">${title}</div>
+          <div class="toast-description">${description}</div>
+      `;
+
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+          toast.remove();
+      }, 4000);
+  }
+
+  // Initialize game
+  function createInitialGameState(boardSize, startingArmies, player1Name, player2Name) {
+      return {
+          boardSize,
+          startingArmies,
+          currentPlayer: 1,
+          player1: {
+              name: player1Name,
+              armies: startingArmies,
+              totalArmies: startingArmies,
+              territories: 0
+          },
+          player2: {
+              name: player2Name,
+              armies: startingArmies,
+              totalArmies: startingArmies,
+              territories: 0
+          },
+          board: new Array(boardSize).fill(null).map(() => ({ owner: 0, armies: 0 })),
+          gameStarted: true
+      };
+  }
+
+  // Start game
+
+    function startGame(){
+        const boardSize = parseInt(document.getElementById('boardSize').value);
+        const startingArmies = parseInt(document.getElementById('startingArmies').value);
+        const player1Name = document.getElementById('player1Name').value || 'Player 1';
+        const player2Name = document.getElementById('player2Name').value || 'Player 2';
+
+        if (boardSize < 1 || boardSize > 20){
+            showToast('Invalid Board Size', 'Board size must be between 2 and 20 cells.', 'error');
+            return;
+        }
+
+        if (startingArmies < 1 || startingArmies > 500){
+            showToast('Invalid Army Count', 'Starting armies must be between 1 and 500.', 'error');
+            return;
+        }
+        gameState = createInitialGameState(boardSize, startingArmies, player1Name, player2Name);
+        document.getElementById('setupScreen').classList.add('hidden');
+        document.getElementById('gameScreen').classList.remove('hidden');
+        renderGame();
+    }
+
+    function renderGame(){
+        // Update the current player display
+        const currentPlayerData = gameState.currentPlayer === 1 ? gameState.player1 : gameState.player2;
+        document.getElementById('currentPlayer').textContent = currentPlayerData.name;
+        document.getElementById('remainingArmies').textContent = currentPlayerData.armies;
+        renderBoard();
+        updatePlayerCards();
+    }
+    function renderBoard(){
+        //take input from the page
+        const cellLabels = document.getElementById('cellLabels');
+        const gameBoard = document.getElementById('gameBoard');
+        //clear existing content
+        cellLabels.innerHTML = '';
+        gameBoard.innerHTML = '';
+        //cell labels
+        for (let i = 0; i < gameState.boardSize; i++){
+            const label = document.createElement('div');
+            label.className = 'cell-label';
+            label.textContent = `Cell ${i + 1}`;
+            cellLabels.appendChild(label);
+        }
+        //create game cells
+        for(let i=0; i< gameState.boardSize; i++){
+            const cell = gameState.board[i];
+            const cellDiv = document.createElement('div');
+            cellDiv.className = 'game-cell';
+            if (cell.owner === 0){
+                cellDiv.innerHTML = `
+                <div class="cell-tooltip">Cell ${i + 1}</div>
+                <div style="color : #9ca3af;">Empty</div>
+                `;
+            }
+            else{
+                cellDiv.classList.add(cell.owner === 1 ? 'player1' : 'player2');
+                cellDiv.innerHTML = `
+                <div class="cell-tooltip">Cell ${i + 1}</div>
+                <div style="font-weight: bold; color: black;">${cell.armies}</div>
+                <div style="font-size: 12px; color: black;">P${cell.owner}</div>
+                `;
+            }
+
+            cellDiv.onclick = () => handleCellClick(i);
+            gameBoard.appendChild(cellDiv);
+            // if (cell.owner === gameState.currentPlayer){
+                
+            // }
+        }
+    }
+        function handleCellClick(cellIndex){
+            const currentPlayerData = gameState.currentPlayer === 1? gameState.player1 : gameState.player2;
+            const armyCountInput = prompt(
+                `How many armies do you want to place in Cell ${cellIndex + 1}?\nYou have ${currentPlayerData.armies} armies remaining:`);
+            if (armyCountInput === null) return;
+            const armyCount = parseInt(armyCountInput);
+            if (isNaN(armyCount)) {
+                showToast('Invalid Input', 'Please enter a valid number.', 'error');
+                return;
+            }
+            const validation = canPlaceArmies(cellIndex, armyCount);
+            if(!validation.canPlace){
+                showToast('Cannot Place Armies', validtion.reason, 'error');
+                return;
+            }
+            placeArmies(cellIndex, armyCount);
+            renderGame();
+            //check if game is over
+            const gameEndCheck = checkGameEnd();
+            if (gameEndCheck.isGameOver){
+                showToast('Game Over!', `${gameEndCheck.winner} wins the game!`, 'sucess');
+            }
+        }
+
+  // Validate army placement
+  function canPlaceArmies(cellIndex, armyCount) {
+      const cell = gameState.board[cellIndex];
+      const currentPlayerData = gameState.currentPlayer === 1 ? gameState.player1 : gameState.player2;
+
+      if (cell.owner !== 0 && cell.owner !== gameState.currentPlayer) {
+          return { canPlace: false, reason: "This cell is controlled by your opponent!" };
+      }
+
+      if (armyCount <= 0) {
+          return { canPlace: false, reason: "Please enter a valid number of armies." };
+      }
+
+      if (armyCount > currentPlayerData.armies) {
+          return { canPlace: false, reason: "You don't have enough armies!" };
+      }
+
+      return { canPlace: true };
+  }
+
+  // Place armies
+  function placeArmies(cellIndex, armyCount) {
+      const cell = gameState.board[cellIndex];
+      const currentPlayerData = gameState.currentPlayer === 1 ? gameState.player1 : gameState.player2;
+
+      // Place armies
+      if (cell.owner === 0) {
+          cell.owner = gameState.currentPlayer;
+      }
+
+      cell.armies += armyCount;
+      currentPlayerData.armies -= armyCount;
+
+      // Update territory counts
+      gameState.player1.territories = gameState.board.filter(c => c.owner === 1).length;
+      gameState.player2.territories = gameState.board.filter(c => c.owner === 2).length;
+      //end turn
+      gameState.currentPlayer = gameState.currentPlayer === 1? 2 : 1;
+      const newCurrentPlayer = gameState.currentPlayer === 1 ? gameState.player1 : gameState.player2; 
+      showToast('Turn Ended', `It's now ${newCurrentPlayer.name}'s turn`, 'success');
+      renderGame();
+  }
+
+  // Check game end
+  function checkGameEnd() {
+      const player1HasArmies = gameState.player1.armies > 0 || gameState.board.some(cell => cell.owner === 1);
+      const player2HasArmies = gameState.player2.armies > 0 || gameState.board.some(cell => cell.owner === 2);
+
+      if (!player1HasArmies) {
+          return { isGameOver: true, winner: gameState.player2.name };
+      }
+
+      if (!player2HasArmies) {
+          return { isGameOver: true, winner: gameState.player1.name };
+      }
+
+      // Check if majority of board is controlled
+      const totalCells = gameState.boardSize;
+      const majorityNeeded = Math.floor(totalCells / 2) + 1;
+
+      if (gameState.player1.territories >= majorityNeeded) {
+          return { isGameOver: true, winner: gameState.player1.name };
+      }
+
+      if (gameState.player2.territories >= majorityNeeded) {
+          return { isGameOver: true, winner: gameState.player2.name };
+      }
+
+      return { isGameOver: false };
+  }
+
+  // Update player cards
+  function updatePlayerCards() {
+      // Update player 1 card
+      document.getElementById('player1NameDisplay').textContent = gameState.player1.name;
+      document.getElementById('player1TotalArmies').textContent = gameState.player1.totalArmies;
+      document.getElementById('player1RemainingArmies').textContent = gameState.player1.armies;
+      document.getElementById('player1Territories').textContent = gameState.player1.territories;
+
+      // Update player 2 card
+      document.getElementById('player2NameDisplay').textContent = gameState.player2.name;
+      document.getElementById('player2TotalArmies').textContent = gameState.player2.totalArmies;
+      document.getElementById('player2RemainingArmies').textContent = gameState.player2.armies;
+      document.getElementById('player2Territories').textContent = gameState.player2.territories;
+
+      // Update active player styling
+      const player1Card = document.getElementById('player1Card');
+      const player2Card = document.getElementById('player2Card');
+
+      if (gameState.currentPlayer === 1) {
+          player1Card.classList.add('active');
+          player2Card.classList.remove('active');
+      } else {
+          player1Card.classList.remove('active');
+          player2Card.classList.add('active');
+      }
+  }
+
+  // Reset game
+  function resetGame() {
+      if (confirm('Are you sure you want to reset the game?')) {
+          document.getElementById('gameScreen').classList.add('hidden');
+          document.getElementById('setupScreen').classList.remove('hidden');
+      }
+  }
+</script>
+</body>
+</html>

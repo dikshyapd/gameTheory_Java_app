@@ -1,0 +1,40 @@
+/* Ensure inputs don’t overlap in small screens */
+@media (max-width: 600px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+    /* stack columns vertically */
+  }
+}
+
+/* Inputs */
+input[type="number"],
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Card title */
+#setupScreen h2 {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Start button */
+#startBtn {
+  background: #0b79ff;
+  color: white;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s;
+}
+
+#startBtn:hover {
+  background: #ffffff;
+}
